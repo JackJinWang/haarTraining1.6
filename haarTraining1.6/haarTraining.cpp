@@ -751,7 +751,7 @@ static void icvSetWeightsAndClasses(CvHaarTrainingData* training_data,
 	}
 }
 static 
-void saveXML(int stage,vector<MyStumpClassifier> strongClassifier,const char* dirname,float stage_thresold)
+void saveXML(CvIntHaarFeatures* haarFeatures,int stage,vector<MyStumpClassifier> strongClassifier,const char* dirname,float stage_thresold)
 {
 	XMLDocument doc;
 	MyStumpClassifier weakClassifier;
@@ -760,6 +760,7 @@ void saveXML(int stage,vector<MyStumpClassifier> strongClassifier,const char* di
 	doc.InsertEndChild(root);
 	root->SetAttribute("stage_thresold", stage_thresold);
 	char son[100];
+	char rectStr[200];
 	for (int i = 0;i < strongClassifier.size();i++)
 	{
 		weakClassifier = strongClassifier[i];
@@ -768,7 +769,35 @@ void saveXML(int stage,vector<MyStumpClassifier> strongClassifier,const char* di
 		sonElement->SetAttribute("id", i);
 		root->InsertEndChild(sonElement);
 		XMLElement* sunElement1 = doc.NewElement("haarfeature");
-		sunElement1->SetText(weakClassifier.compidx);
+		
+		//haar特征标号
+		XMLElement* haarNumber = doc.NewElement("number");
+		haarNumber->SetText(weakClassifier.compidx);
+		sunElement1->InsertEndChild(haarNumber);
+		//haar特征描述
+		XMLElement* haarDesc = doc.NewElement("desc");
+		haarDesc->SetText(haarFeatures->feature[weakClassifier.compidx].desc);
+		sunElement1->InsertEndChild(haarDesc);
+		XMLElement* haarRect = doc.NewElement("rect");
+		
+		for (int k = 0;k < CV_HAAR_FEATURE_MAX;k++)
+		{
+
+				XMLElement* rect = doc.NewElement(" ");
+				sprintf(rectStr, "%d %d %d %d %f", haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p0, haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p1,
+					haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p2, haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p3,
+					haarFeatures->fastfeature[weakClassifier.compidx].rect[k].weight);
+				rect->SetText(rectStr);
+				haarRect->InsertEndChild(rect);
+
+		}
+		
+		sunElement1->InsertEndChild(haarRect);
+		XMLElement* haarTitle = doc.NewElement("titled");
+		haarTitle->SetText(haarFeatures->feature[weakClassifier.compidx].tilted);
+		sunElement1->InsertEndChild(haarTitle);
+		
+
 		sonElement->InsertEndChild(sunElement1);
 		
 		XMLElement* sunElement2 = doc.NewElement("error");
@@ -790,6 +819,8 @@ void saveXML(int stage,vector<MyStumpClassifier> strongClassifier,const char* di
 	char docName[100];
 	sprintf(docName, "%s//change_stage%d.xml", dirname, stage);
 	doc.SaveFile(docName);
+	
+	
 }
 /*
 *求解弱分类器累加和
@@ -1230,10 +1261,10 @@ void icvBoost(int maxweaksplits, int stage_all, CvIntHaarFeatures* haarFeatures,
 		cout <<"thresold:"<< thresold <<",falsealarms:"<<current_falsealarms<<",feature_num:"<<featurenumber<<endl;
 		cout << "正样本消耗:" << pos_next<<",负样本消耗:"<<neg_next<<endl;
 		//保存成xml文件
-		saveXML(stage, strongClassifier, dirname,thresold);
+		saveXML(haarFeatures,stage, strongClassifier, dirname,thresold);
 		stage++;
 	}
-
+	
  	delete[]vector_feat;
 	delete[]eval;
 	delete[]predit_result;

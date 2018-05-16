@@ -13,6 +13,17 @@ using namespace tinyxml2;
 using namespace std;
 #define POS_FLAG 1
 #define NEG_FLAG 2
+
+/*
+*
+* define xml name
+*/
+#define WEAK "weak"
+#define HAARFEATUR "haarfeature"
+#define ERRORER "error"
+#define LEFT "left"
+#define RIGHT "right"
+#define THRESHOLD "threshold"
 /*
 * get sum image offsets for <rect> corner points
 * step - row step (measured in image pixels!) of sum image
@@ -755,11 +766,12 @@ void saveXML(CvIntHaarFeatures* haarFeatures,int stage,vector<MyStumpClassifier>
 {
 	XMLDocument doc;
 	MyStumpClassifier weakClassifier;
+	char rootName[100];
+	sprintf(rootName,"stage_%d",stage);
 	// 创建根元素<China>  
-	XMLElement* root = doc.NewElement("root");
+	XMLElement* root = doc.NewElement(rootName);
 	doc.InsertEndChild(root);
 	root->SetAttribute("stage_thresold", stage_thresold);
-	char son[100];
 	char rectStr[200];
 	for (int i = 0;i < strongClassifier.size();i++)
 	{
@@ -769,7 +781,7 @@ void saveXML(CvIntHaarFeatures* haarFeatures,int stage,vector<MyStumpClassifier>
 		sonElement->SetAttribute("id", i);
 		root->InsertEndChild(sonElement);
 		XMLElement* sunElement1 = doc.NewElement("haarfeature");
-		
+		/*
 		//haar特征标号
 		XMLElement* haarNumber = doc.NewElement("number");
 		haarNumber->SetText(weakClassifier.compidx);
@@ -782,13 +794,19 @@ void saveXML(CvIntHaarFeatures* haarFeatures,int stage,vector<MyStumpClassifier>
 		
 		for (int k = 0;k < CV_HAAR_FEATURE_MAX;k++)
 		{
-
-				XMLElement* rect = doc.NewElement(" ");
-				sprintf(rectStr, "%d %d %d %d %f", haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p0, haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p1,
+			stringstream ss;
+			ss << k;// int->string
+			string str = ss.str();
+			if (!ss.good())
+			{
+				printf("矩形id转换错误\n");
+			}
+			XMLElement* rect = doc.NewElement(str.c_str());
+			sprintf(rectStr, "%d %d %d %d %f", haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p0, haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p1,
 					haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p2, haarFeatures->fastfeature[weakClassifier.compidx].rect[k].p3,
 					haarFeatures->fastfeature[weakClassifier.compidx].rect[k].weight);
-				rect->SetText(rectStr);
-				haarRect->InsertEndChild(rect);
+			rect->SetText(rectStr);
+			haarRect->InsertEndChild(rect);
 
 		}
 		
@@ -796,8 +814,8 @@ void saveXML(CvIntHaarFeatures* haarFeatures,int stage,vector<MyStumpClassifier>
 		XMLElement* haarTitle = doc.NewElement("titled");
 		haarTitle->SetText(haarFeatures->feature[weakClassifier.compidx].tilted);
 		sunElement1->InsertEndChild(haarTitle);
-		
-
+		*/
+		sunElement1->SetText(weakClassifier.compidx);
 		sonElement->InsertEndChild(sunElement1);
 		
 		XMLElement* sunElement2 = doc.NewElement("error");
@@ -939,6 +957,78 @@ int* predict(int* preResult, float thresold,int pictureNum, CvIntHaarFeatures* h
 	delete[]at;
 	return preResult;
 }
+
+
+
+static
+/*
+*读入XML
+*/
+MyCARTClassifier readXML(const char* xmlPath, MyCARTClassifier &strongClassifier)
+{
+
+	XMLDocument doc;
+	/*读文件*/
+	if (doc.LoadFile(xmlPath))
+	{
+		doc.PrintError();
+		exit(1);
+	}
+	// 根元素  
+	XMLElement* scene = doc.RootElement();
+
+	float th = atof(scene->Attribute("stage_thresold"));
+	strongClassifier.threshold = th;
+	// 遍历<surface>元素  
+	XMLElement* surface = scene->FirstChildElement("weak");
+	while (surface)
+	{
+		MyStumpClassifier tempWeak;
+		// 遍历属性列表  
+		const XMLAttribute* surfaceAttr = surface->FirstAttribute();
+		while (surfaceAttr)
+		{
+			//	cout << surfaceAttr->Name() << ":" << surfaceAttr->Value() << "  ";
+			surfaceAttr = surfaceAttr->Next();
+		}
+		cout << endl;
+
+		// 遍历子元素  
+		XMLElement* surfaceChild = surface->FirstChildElement();
+		while (surfaceChild)
+		{
+			//	cout << surfaceChild->Name() << " = " << surfaceChild->GetText() << endl;
+			if (strcmp(surfaceChild->Name(), HAARFEATUR) == 0)
+			{
+				tempWeak.compidx = atoi(surfaceChild->GetText());
+			}
+			else if (strcmp(surfaceChild->Name(), ERRORER) == 0)
+			{
+				tempWeak.error = atof(surfaceChild->GetText());
+			}
+			else if (strcmp(surfaceChild->Name(), LEFT) == 0)
+			{
+				tempWeak.left = atof(surfaceChild->GetText());
+			}
+			else if (strcmp(surfaceChild->Name(), RIGHT) == 0)
+			{
+				tempWeak.right = atof(surfaceChild->GetText());
+			}
+			else if (strcmp(surfaceChild->Name(), THRESHOLD) == 0)
+			{
+				tempWeak.threshold = atof(surfaceChild->GetText());
+			}
+			surfaceChild = surfaceChild->NextSiblingElement();
+		}
+		cout << endl;
+		strongClassifier.classifier.push_back(tempWeak);
+		surface = surface->NextSiblingElement("weak");
+	}
+	return strongClassifier;
+
+
+}
+
 /*
 *计算当前阶数boost，若要增加弱分类器深度操作numsplits
 */
@@ -1014,9 +1104,9 @@ void icvBoost(int maxweaksplits, int stage_all, CvIntHaarFeatures* haarFeatures,
 				}
 				else if ((predit_result[sss] == 0.0) && (haarTrainingData->cls.data.fl[sss] == 0.0))
 				{
-					if (pos_next >= cvposdata->count)
+					if (neg_next >= cvbgdata->count)
 					{
-						printf("正样本已经用完\n");
+						printf("负样本已经用完\n");
 						delete[]vector_feat;
 						delete[]eval;
 						delete[]predit_result;
@@ -1317,7 +1407,80 @@ void icvReleaseBackgroundData(CvBackgroundData** data)
 
 	free((*data));
 }
+/*
+*合并xml
+*/
+static 
+void combineXml(const char* dirname,MySize winsize)
+{
+	XMLDocument doc2;
+	MyCARTClassifier *strongClassifier = NULL;//强分类器
+	char cascadeName[100];
+	vector<string> files; //读取xml文件
+	//获取文件
+	getFiles(dirname, files);
+	strongClassifier = new MyCARTClassifier[files.size()];
+	XMLElement* root2 = doc2.NewElement("root");
+	XMLElement* size = doc2.NewElement("size");
+	XMLElement* stageNumber = doc2.NewElement("stage_number");
+	char strSzie[20];
+	char strStageNumber[20];
+	sprintf(strSzie, "%d %d", winsize.width, winsize.height);
+	sprintf(strStageNumber, "%d",files.size());
+	size->SetText(strSzie);
+	stageNumber->SetText(strStageNumber);
+	root2->InsertEndChild(size);
+	root2->InsertEndChild(stageNumber);
+	for (int i = 0;i < files.size();i++)
+	{
+		strongClassifier[i] = readXML(files[i].c_str(), strongClassifier[i]);
+	}
+	for (int j = 0;j < files.size();j++)
+	{
+		char rootName[100];
+		sprintf(rootName, "stage_%d", j);
+		MyStumpClassifier weakClassifier;
+		// 创建根元素<China>  
+		XMLElement* root = doc2.NewElement(rootName);
+		doc2.InsertEndChild(root);
+		root->SetAttribute("stage_thresold", strongClassifier[j].threshold);
+		char rectStr[200];
+		for (int i = 0;i < strongClassifier[j].classifier.size();i++)
+		{
+			weakClassifier = strongClassifier[j].classifier[i];
 
+			XMLElement* sonElement = doc2.NewElement("weak");
+			sonElement->SetAttribute("id", i);
+			root->InsertEndChild(sonElement);
+			XMLElement* sunElement1 = doc2.NewElement("haarfeature");
+
+			sunElement1->SetText(weakClassifier.compidx);
+			sonElement->InsertEndChild(sunElement1);
+
+			XMLElement* sunElement2 = doc2.NewElement("error");
+			sunElement2->SetText(weakClassifier.error);
+			sonElement->InsertEndChild(sunElement2);
+			XMLElement* sunElement3 = doc2.NewElement("left");
+			sunElement3->SetText(weakClassifier.left);
+			sonElement->InsertEndChild(sunElement3);
+
+			XMLElement* sunElement4 = doc2.NewElement("right");
+			sunElement4->SetText(weakClassifier.right);
+			sonElement->InsertEndChild(sunElement4);
+			XMLElement* sunElement5 = doc2.NewElement("threshold");
+			sunElement5->SetText(weakClassifier.threshold);
+			sonElement->InsertEndChild(sunElement5);
+
+
+		}
+		root2->InsertEndChild(root);
+	}
+
+	sprintf(cascadeName, "%s\\cascade.xml", dirname);
+	doc2.InsertEndChild(root2);
+	doc2.SaveFile(cascadeName);
+	delete[]strongClassifier;
+}
 void myHaarTraining(const char* dirname,
 	const char* posfilename,
 	const char* bgfilename,
@@ -1333,7 +1496,10 @@ void myHaarTraining(const char* dirname,
 	int boosttype, int stumperror,
 	int maxtreesplits, int minpos, bool bg_vecfile,bool pos_vecfile)
 {
+
 	
+	
+
 	CvIntHaarFeatures* haar_features = NULL;
 	CvHaarTrainingData* training_data = NULL;           //记住要释放空间(已经释放)
 	MySize winsize;
@@ -1387,6 +1553,8 @@ void myHaarTraining(const char* dirname,
 	//开始级联计算
 	icvBoost(maxtreesplits, nstages, haar_features, training_data,
 		featuredir, dirname, npos, nneg, numsplits, equalweights, dirname,minhitrate,maxfalsealarm,winsize, numprecalculated);
+	combineXml(dirname, winsize);
+
 	_MY_END_
 	if (cvbgdata != NULL)
 	{

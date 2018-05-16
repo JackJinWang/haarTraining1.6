@@ -15,3 +15,13 @@ typedef struct MyStumpClassifier
 	float right;
 } MyStumpClassifier;
 
+typedef struct MyCARTClassifier
+{
+	/* number of internal nodes */
+	int count;
+	/* internal nodes (each array of <count> elements) */
+	vector<MyStumpClassifier> classifier;
+	float threshold;
+
+} MyCARTClassifier;
+

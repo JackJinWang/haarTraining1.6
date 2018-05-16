@@ -4,7 +4,7 @@ Description:基本参数
 **************************************************/
 #pragma once
 #include<iostream>
-
+#include<vector>
 using namespace std;
 
 #define THREE_CHANNEL 3 //三通道
@@ -40,4 +40,4 @@ typedef void MyArr;
 * 获取一定范围内不重复的随机数
 */
 int *getRand(int *result, int low, int high, int number);
-
+void getFiles(string path, vector<string>& files);

@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
 	printf("Data dir name: %s\n", ((dirname == NULL) ? nullname : dirname));
 	printf("Vec file name: %s\n", ((vecname == NULL) ? nullname : vecname));
 	printf("BG  file name: %s, is a vecfile: %s\n", ((bgname == NULL) ? nullname : bgname), bg_vecfile ? "yes" : "no");
-	printf("BG  file name: %s, is a vecfile: %s\n", ((vecname == NULL) ? nullname : vecname), pos_vecfile ? "yes" : "no");
+	printf("POS  file name: %s, is a vecfile: %s\n", ((vecname == NULL) ? nullname : vecname), pos_vecfile ? "yes" : "no");
 	printf("Num pos: %d\n", npos);
 	printf("Num neg: %d\n", nneg);
 	printf("Num stages: %d\n", nstages);

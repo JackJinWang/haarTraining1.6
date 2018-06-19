@@ -959,7 +959,6 @@ int* predict(int* preResult, float thresold,int pictureNum, CvIntHaarFeatures* h
 }
 
 
-
 static
 /*
 *读入XML
@@ -991,7 +990,6 @@ MyCARTClassifier readXML(const char* xmlPath, MyCARTClassifier &strongClassifier
 			//	cout << surfaceAttr->Name() << ":" << surfaceAttr->Value() << "  ";
 			surfaceAttr = surfaceAttr->Next();
 		}
-		cout << endl;
 
 		// 遍历子元素  
 		XMLElement* surfaceChild = surface->FirstChildElement();
@@ -1099,7 +1097,8 @@ void icvBoost(int maxweaksplits, int stage_all, CvIntHaarFeatures* haarFeatures,
 						delete[]idx;
 						return;
 					}
-					replacePictrue(haarTrainingData, number_pos, sss, pos_next, mysize);
+
+					replacePictrue(haarTrainingData, num_pos, sss, pos_next, mysize);
 					pos_next++;
 				}
 				else if ((predit_result[sss] == 0.0) && (haarTrainingData->cls.data.fl[sss] == 0.0))
@@ -1113,7 +1112,7 @@ void icvBoost(int maxweaksplits, int stage_all, CvIntHaarFeatures* haarFeatures,
 						delete[]idx;
 						return;
 					}
-					replacePictrue(haarTrainingData, number_pos, sss, neg_next, mysize);
+					replacePictrue(haarTrainingData, num_pos, sss, neg_next, mysize);
 					neg_next++;
 				}
 
